@@ -68,8 +68,8 @@ async def main():
             "Log in or sign up? Type l for login and s for sign up: ").lower()
         if action == "s":  # sign up
             while True:
-                username = aioconsole.ainput("What username will you go by? ")
-                password = aioconsole.ainput(
+                username = await aioconsole.ainput("What username will you go by? ")
+                password = await aioconsole.ainput(
                     "Make an unforgettable password: ")
                 packet = communication.signupRequest()
                 packet.username = username
@@ -86,8 +86,8 @@ async def main():
                     print(f"The server said: {response.reason}")
         elif action == "l":  # log in
             while True:
-                username = aioconsole.ainput("What is your username? ")
-                password = aioconsole.ainput("What is your password? ")
+                username = await aioconsole.ainput("What is your username? ")
+                password = await aioconsole.ainput("What is your password? ")
                 packet = communication.loginRequest()
                 packet.username = username
                 packet.password = password
