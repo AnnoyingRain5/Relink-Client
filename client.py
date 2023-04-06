@@ -65,11 +65,12 @@ async def main():
             f"ws://{server_address}:8765") as websocket:
         global username
         action = input(
-            "Log in or sign up? Type l for login and s for sign up").lower()
+            "Log in or sign up? Type l for login and s for sign up: ").lower()
         if action == "s":  # sign up
             while True:
-                username = input("What username will you go by? ")
-                password = input("Make an unforgettable password: ")
+                username = aioconsole.ainput("What username will you go by? ")
+                password = aioconsole.ainput(
+                    "Make an unforgettable password: ")
                 packet = communication.signupRequest()
                 packet.username = username
                 packet.password = password
@@ -85,8 +86,8 @@ async def main():
                     print(f"The server said: {response.reason}")
         elif action == "l":  # log in
             while True:
-                username = input("What is your username? ")
-                password = input("What is your password? ")
+                username = aioconsole.ainput("What is your username? ")
+                password = aioconsole.ainput("What is your password? ")
                 packet = communication.loginRequest()
                 packet.username = username
                 packet.password = password
