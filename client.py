@@ -8,7 +8,6 @@ CURSOR_UP = '\033[F'
 ERASE_LINE = '\033[K'
 
 username = ""
-global server_address
 
 
 async def PacketReciever(websocket):
