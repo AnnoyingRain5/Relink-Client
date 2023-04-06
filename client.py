@@ -16,9 +16,9 @@ async def PacketReciever(websocket):
         packet = communication.packet(await websocket.recv())
         match type(packet):
             case communication.message:
-                await messageHandler(websocket, packet)
+                await messageHandler(websocket, packet)  # type: ignore
             case communication.command:
-                await commandHandler(websocket, packet)
+                await commandHandler(websocket, packet)  # type: ignore
             case _:
                 print(type(packet))
 
@@ -39,18 +39,31 @@ async def inputmanager(websocket):
     while True:
         # TODO: work out what type of message it is
         message = await aioconsole.ainput()
-        print(CURSOR_UP + ERASE_LINE)
-        encoded = communication.message()
-        encoded.text = message
-        encoded.username = username
-        await websocket.send(encoded.json)
+        if not message.startswith("/"):  # message is a message
+            print(CURSOR_UP + ERASE_LINE)
+            encoded = communication.message()
+            encoded.text = message
+            encoded.username = username
+            await websocket.send(encoded.json)
+        else:  # message is a command
+            print(CURSOR_UP + ERASE_LINE)
+            encoded = communication.command()
+            arglist = message.split()
+            arglist[0] = arglist[0].removeprefix("/")
+            encoded.name = arglist[0]
+            # do not include the name argument
+            encoded.args = arglist[1:len(arglist)]
+            await websocket.send(encoded.json)
 
 
 async def main():
+    # connect and log in or sign up to the server
     server_address = input(
         "Please enter the IP address or domain name (excluding port) of the server you wish to connect to: ")
     print("Please wait while we attempt to connect to the server...")
-    async with websockets.connect(f"ws://{server_address}:8765") as websocket:
+
+    async with websockets.connect(  # type: ignore
+            f"ws://{server_address}:8765") as websocket:
         global username
         action = input(
             "Log in or sign up? Type l for login and s for sign up").lower()
@@ -71,7 +84,6 @@ async def main():
                 else:
                     print("Denied! Please try again...")
                     print(f"The server said: {response.reason}")
-                break
         elif action == "l":  # log in
             while True:
                 username = input("What is your username? ")
@@ -89,10 +101,11 @@ async def main():
                 else:
                     print("Denied! Please try again...")
                     print(f"The server said: {response.reason}")
-                break
 
+        # we are now fully logged into the server, start the main script
         PktRcvTask = asyncio.create_task(PacketReciever(websocket))
         InputManTask = asyncio.create_task(inputmanager(websocket))
+        # both of these loop forever, so technically we do not need to wait for both of them
         await PktRcvTask
         await InputManTask
 
