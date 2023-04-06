@@ -7,6 +7,11 @@ import json
 CURSOR_UP = '\033[F'
 ERASE_LINE = '\033[K'
 
+YELLOW = '\033[33m'
+RED = '\033[31m'
+BLUE = '\033[94m'
+NORMAL = '\033[0m'
+
 username = ""
 
 
@@ -18,16 +23,25 @@ async def PacketReciever(websocket):
                 await messageHandler(websocket, packet)  # type: ignore
             case communication.command:
                 await commandHandler(websocket, packet)  # type: ignore
+            case communication.system:
+                await SystemMessageHandler(websocket, packet)  # type: ignore
             case _:
                 print(type(packet))
 
 
 async def messageHandler(websocket, message: communication.message):
-    finalmessage = f"{message.username}: {message.text}"
     if message.username == username:
-        print(CURSOR_UP + finalmessage)
+        print(f"{CURSOR_UP}{BLUE}{message.username}{NORMAL}: {message.text}")
     else:
-        print(finalmessage)
+        print(f"{RED}{message.username}{NORMAL}: {message.text}")
+
+
+async def SystemMessageHandler(websocket, message: communication.system):
+    finalmessage = ""
+    if message.response:
+        finalmessage += CURSOR_UP
+    finalmessage += f"{YELLOW}{message.text}{NORMAL}"
+    print(finalmessage)
 
 
 async def commandHandler(websocket, command: communication.command):
