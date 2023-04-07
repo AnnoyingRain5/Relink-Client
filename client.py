@@ -28,8 +28,12 @@ def renderText():
     lines = os.get_terminal_size().lines
     columns = os.get_terminal_size().columns
     topstr = f"#{channel}@{serverAddress}"
-    print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}{topstr}", end="")
-    for column in range(columns - len(topstr)):
+    middle = math.floor(columns / 2)
+    print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
+    for column in range(middle - math.floor(len(topstr) / 2)):
+        print(" ", end="")
+    print(topstr, end="")
+    for column in range(middle - math.ceil(len(topstr) / 2)):
         print(" ", end="")
     print(NORMAL)
     for message in messages:
