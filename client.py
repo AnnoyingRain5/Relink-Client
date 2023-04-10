@@ -58,7 +58,10 @@ def renderText():
 
 async def PacketReciever(websocket):
     while True:
-        packet = communication.packet(await websocket.recv())
+        # Get a packet from the server and convert the JSON to it's type
+        rawPacket = await websocket.recv()
+        packet = communication.packet(rawPacket)
+        # Run the correct handler for the packet type
         match type(packet):
             case communication.message:
                 await messageHandler(websocket, packet)  # type: ignore
@@ -68,9 +71,12 @@ async def PacketReciever(websocket):
                 await SystemMessageHandler(websocket, packet)  # type: ignore
             case communication.channelChange:
                 await ChannelChangeHandler(websocket, packet)  # type: ignore
-            case _:
-                print(type(packet))
-                exit()
+            case _:  # if the client does not understand what type of packet it is
+                warning = f"{YELLOW} Warning: Recieved an unknown message from the server! "
+                warning += f"Perhaps you need to update your client? The raw JSON recieved is as follows: "
+                warning += f"{NORMAL}{rawPacket}"
+                messages.append(warning)
+                renderText()
 
 
 async def messageHandler(websocket, message: communication.message):
