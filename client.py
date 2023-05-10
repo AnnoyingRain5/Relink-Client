@@ -2,10 +2,8 @@ import websockets
 import asyncio
 import aioconsole
 import communication
-import json
 import os
 import math
-import sys
 
 CURSOR_HOME = '\033[H'
 CURSOR_UP = '\033[F'
@@ -20,14 +18,43 @@ NORMAL = '\033[0m'
 
 username = ""
 messages = []
-channel = "Unknown (not supplied by server?)"
+CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
+
+
+class notificationlist():
+    def __init__(self):
+        self.dict: dict[str, int] = {}
+
+    def __len__(self) -> int:
+        total = 0
+        for item in self.dict:
+            total += self.dict[item]
+        return total
+
+    def add(self, channel):
+        global CurrentChannel
+        if channel == CurrentChannel:
+            return
+        try:
+            self.dict[channel] += 1
+        except KeyError:  # if this is the first message for this
+            self.dict[channel] = 1
+
+    def markRead(self, channel):
+        self.dict[channel] = 0
+
+    def MarkAllRead(self):
+        self.dict = {}
+
+
+notifications = notificationlist()
 
 
 def renderText():
     lines = os.get_terminal_size().lines
     columns = os.get_terminal_size().columns
-    topstr = f"#{channel}@{serverAddress}"
+    topstr = f"({len(notifications)}) - #{CurrentChannel}@{serverAddress}"
     middle = math.floor(columns / 2)
     print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
     for column in range(middle - math.floor(len(topstr) / 2)):
@@ -71,6 +98,8 @@ async def PacketReciever(websocket):
                 await SystemMessageHandler(websocket, packet)  # type: ignore
             case communication.channelChange:
                 await ChannelChangeHandler(websocket, packet)  # type: ignore
+            case communication.notification:
+                await notificationHandler(websocket, packet)  # type: ignore
             case _:  # if the client does not understand what type of packet it is
                 warning = f"{YELLOW} Warning: Recieved an unknown message from the server! "
                 warning += f"Perhaps you need to update your client? The raw JSON recieved is as follows: "
@@ -97,16 +126,31 @@ async def commandHandler(websocket, command: communication.command):
 
 
 async def ChannelChangeHandler(websocket, message: communication.channelChange):
-    global channel
+    global CurrentChannel
     global messages
-    channel = message.channel
+    global notifications
+    CurrentChannel = message.channel
     messages = []
+    notifications.markRead(message.channel)
+    renderText()
+
+
+async def notificationHandler(websocket, notification: communication.notification):
+    # TODO add proper notification support
+    if notification.type == "mention":
+        text = f"{YELLOW}You got a new mention in #{notification.location}!{NORMAL}\a"
+    elif notification.type == "dm":
+        text = f"{YELLOW}New DM from {notification.location}{NORMAL}\a"
+    else:
+        text = "New unknown notification.\a"
+    global notifications
+    notifications.add(notification.location)
+    messages.append(text)
     renderText()
 
 
 async def inputmanager(websocket):
     while True:
-        # TODO: work out what type of message it is
         message = await aioconsole.ainput()
         if not message.startswith("/"):  # message is a message
             print(CURSOR_UP + ERASE_LINE)
