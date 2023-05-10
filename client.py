@@ -212,7 +212,6 @@ async def main():
                     response.json = await websocket.recv()
                     if response.result == True:
                         print("Login successful!")
-                        renderText()
                         break
                     else:
                         print("Denied! Please try again...")
@@ -221,6 +220,7 @@ async def main():
             # we are now fully logged into the server, start the main script
             PktRcvTask = asyncio.create_task(PacketReciever(websocket))
             InputManTask = asyncio.create_task(inputmanager(websocket))
+            renderText()  # render the screen for the first time
             # both of these loop forever, so technically we do not need to wait for both of them
             await PktRcvTask
             await InputManTask
