@@ -18,6 +18,7 @@ NORMAL = '\033[0m'
 
 username = ""
 messages = []
+DMs: dict[str, list[communication.message]] = {}
 CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
 
@@ -109,11 +110,36 @@ async def PacketReciever(websocket):
 
 
 async def messageHandler(websocket, message: communication.message):
-    if message.username == username:
-        messages.append(f"{BLUE}{message.username}{NORMAL}: {message.text}")
-    else:
-        messages.append(f"{RED}{message.username}{NORMAL}: {message.text}")
-    renderText()
+    if not message.isDM:
+        if message.username == username:
+            messages.append(
+                f"{BLUE}{message.username}{NORMAL}: {message.text}")
+        else:
+            messages.append(f"{RED}{message.username}{NORMAL}: {message.text}")
+        renderText()
+    else:  # the message is a DM
+        # if we are in the correct channel or it is our own message
+        if f"@{message.username}" == CurrentChannel or message.username == username:
+
+            print(message.username)
+            if message.username == username:
+                messages.append(
+                    f"{BLUE}{message.username}{NORMAL}: {message.text}")
+            else:
+                messages.append(
+                    f"{RED}{message.username}{NORMAL}: {message.text}")
+            renderText()
+        else:
+            # send notification
+            notification = communication.notification()
+            notification.type = "DM"
+            notification.location = f"@{message.username}"
+            await notificationHandler(None, notification)
+            # add the DM to the DMs dictionary
+            try:
+                DMs[f"@{message.username}"].append(message)
+            except KeyError:
+                DMs[f"@{message.username}"] = [message]
 
 
 async def SystemMessageHandler(websocket, message: communication.system):
@@ -132,6 +158,17 @@ async def ChannelChangeHandler(websocket, message: communication.channelChange):
     CurrentChannel = message.channel
     messages = []
     notifications.markRead(message.channel)
+    if CurrentChannel.startswith("@"):
+        try:
+            for dm in DMs[CurrentChannel]:
+                if dm.username == username:
+                    messages.append(
+                        f"{BLUE}{dm.username}{NORMAL}: {dm.text}")
+                else:
+                    messages.append(
+                        f"{RED}{dm.username}{NORMAL}: {dm.text}")
+        except KeyError:
+            pass
     renderText()
 
 
@@ -139,7 +176,7 @@ async def notificationHandler(websocket, notification: communication.notificatio
     # TODO add proper notification support
     if notification.type == "mention":
         text = f"{YELLOW}You got a new mention in #{notification.location}!{NORMAL}\a"
-    elif notification.type == "dm":
+    elif notification.type == "DM":
         text = f"{YELLOW}New DM from {notification.location}{NORMAL}\a"
     else:
         text = "New unknown notification.\a"
@@ -157,6 +194,7 @@ async def inputmanager(websocket):
             encoded = communication.message()
             encoded.text = message
             encoded.username = username
+            encoded.isDM = CurrentChannel.startswith("@")
             await websocket.send(encoded.json)
         else:  # message is a command
             print(CURSOR_UP + ERASE_LINE)
