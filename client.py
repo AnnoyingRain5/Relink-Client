@@ -1,9 +1,9 @@
-import websockets
 import asyncio
-import aioconsole
-import communication
 import os
 import math
+import websockets
+import aioconsole
+import communication
 
 CURSOR_HOME = '\033[H'
 CURSOR_UP = '\033[F'
@@ -18,23 +18,22 @@ NORMAL = '\033[0m'
 
 username = ""
 messages = []
-DMs: dict[str, list[communication.message]] = {}
+DMs: dict[str, list[communication.Message]] = {}
 CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
 
 
-class notificationlist():
+class NotificationList():
     def __init__(self):
         self.dict: dict[str, int] = {}
 
     def __len__(self) -> int:
         total = 0
-        for item in self.dict:
-            total += self.dict[item]
+        for _, amount in self.dict.items():
+            total += amount
         return total
 
     def add(self, channel):
-        global CurrentChannel
         if channel == CurrentChannel:
             return
         try:
@@ -49,7 +48,7 @@ class notificationlist():
         self.dict = {}
 
 
-notifications = notificationlist()
+notifications = NotificationList()
 
 
 def renderText():
@@ -58,10 +57,10 @@ def renderText():
     topstr = f"({len(notifications)}) - #{CurrentChannel}@{serverAddress}"
     middle = math.floor(columns / 2)
     print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
-    for column in range(middle - math.floor(len(topstr) / 2)):
+    for _ in range(middle - math.floor(len(topstr) / 2)):
         print(" ", end="")
     print(topstr, end="")
-    for column in range(middle - math.ceil(len(topstr) / 2)):
+    for _ in range(middle - math.ceil(len(topstr) / 2)):
         print(" ", end="")
     print(NORMAL)
     for message in messages:
@@ -91,25 +90,25 @@ async def PacketReciever(websocket):
         packet = communication.packet(rawPacket)
         # Run the correct handler for the packet type
         match type(packet):
-            case communication.message:
+            case communication.Message:
                 await messageHandler(websocket, packet)  # type: ignore
-            case communication.command:
+            case communication.Command:
                 await commandHandler(websocket, packet)  # type: ignore
-            case communication.system:
+            case communication.System:
                 await SystemMessageHandler(websocket, packet)  # type: ignore
-            case communication.channelChange:
+            case communication.ChannelChange:
                 await ChannelChangeHandler(websocket, packet)  # type: ignore
-            case communication.notification:
+            case communication.Notification:
                 await notificationHandler(websocket, packet)  # type: ignore
             case _:  # if the client does not understand what type of packet it is
                 warning = f"{YELLOW} Warning: Recieved an unknown message from the server! "
-                warning += f"Perhaps you need to update your client? The raw JSON recieved is as follows: "
+                warning += "Perhaps you need to update your client? The raw JSON recieved is as follows: "
                 warning += f"{NORMAL}{rawPacket}"
                 messages.append(warning)
                 renderText()
 
 
-async def messageHandler(websocket, message: communication.message):
+async def messageHandler(websocket, message: communication.Message):
     if not message.isDM:
         if message.username == username:
             messages.append(
@@ -131,7 +130,7 @@ async def messageHandler(websocket, message: communication.message):
             renderText()
         else:
             # send notification
-            notification = communication.notification()
+            notification = communication.Notification()
             notification.type = "DM"
             notification.location = f"@{message.username}"
             await notificationHandler(None, notification)
@@ -142,19 +141,18 @@ async def messageHandler(websocket, message: communication.message):
                 DMs[f"@{message.username}"] = [message]
 
 
-async def SystemMessageHandler(websocket, message: communication.system):
+async def SystemMessageHandler(websocket, message: communication.System):
     messages.append(f"{YELLOW}{message.text}{NORMAL}")
     renderText()
 
 
-async def commandHandler(websocket, command: communication.command):
+async def commandHandler(websocket, command: communication.Command):
     pass
 
 
-async def ChannelChangeHandler(websocket, message: communication.channelChange):
+async def ChannelChangeHandler(websocket, message: communication.ChannelChange):
     global CurrentChannel
     global messages
-    global notifications
     CurrentChannel = message.channel
     messages = []
     notifications.markRead(message.channel)
@@ -172,7 +170,7 @@ async def ChannelChangeHandler(websocket, message: communication.channelChange):
     renderText()
 
 
-async def notificationHandler(websocket, notification: communication.notification):
+async def notificationHandler(websocket, notification: communication.Notification):
     # TODO add proper notification support
     if notification.type == "mention":
         text = f"{YELLOW}You got a new mention in #{notification.location}!{NORMAL}\a"
@@ -180,7 +178,6 @@ async def notificationHandler(websocket, notification: communication.notificatio
         text = f"{YELLOW}New DM from {notification.location}{NORMAL}\a"
     else:
         text = "New unknown notification.\a"
-    global notifications
     notifications.add(notification.location)
     messages.append(text)
     renderText()
@@ -191,14 +188,14 @@ async def inputmanager(websocket):
         message = await aioconsole.ainput()
         if not message.startswith("/"):  # message is a message
             print(CURSOR_UP + ERASE_LINE)
-            encoded = communication.message()
+            encoded = communication.Message()
             encoded.text = message
             encoded.username = username
             encoded.isDM = CurrentChannel.startswith("@")
             await websocket.send(encoded.json)
         else:  # message is a command
             print(CURSOR_UP + ERASE_LINE)
-            encoded = communication.command()
+            encoded = communication.Command()
             arglist = message.split()
             arglist[0] = arglist[0].removeprefix("/")
             encoded.name = arglist[0]
@@ -224,14 +221,14 @@ async def main():
                     username = await aioconsole.ainput("What username will you go by? ")
                     password = await aioconsole.ainput(
                         "Make an unforgettable password: ")
-                    packet = communication.signupRequest()
+                    packet = communication.SignupRequest()
                     packet.username = username
                     packet.password = password
                     print("Please wait...")
                     await websocket.send(packet.json)
-                    response = communication.result()
+                    response = communication.Result()
                     response.json = await websocket.recv()
-                    if response.result == True:
+                    if response.result:
                         print("Login successful!")
                         break
                     else:
@@ -241,14 +238,14 @@ async def main():
                 while True:
                     username = await aioconsole.ainput("What is your username? ")
                     password = await aioconsole.ainput("What is your password? ")
-                    packet = communication.loginRequest()
+                    packet = communication.LoginRequest()
                     packet.username = username
                     packet.password = password
                     print("Please wait...")
                     await websocket.send(packet.json)
-                    response = communication.result()
+                    response = communication.Result()
                     response.json = await websocket.recv()
-                    if response.result == True:
+                    if response.result:
                         print("Login successful!")
                         break
                     else:
