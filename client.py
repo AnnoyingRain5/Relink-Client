@@ -205,6 +205,14 @@ async def inputmanager(websocket):
 
 
 async def main():
+    # if we are running on windows
+    if os.name == "nt":
+        print("Hey! it looks like you are running on Windows.")
+        print(
+            f"if {BLUE}THIS{NORMAL} does not display in blue, then you will need to use a different terminal")
+        print(
+            "A popular supported terminal is Windows Terminal, which is avaliable on the Microsoft Store")
+
     # connect and log in or sign up to the server
     global serverAddress
     serverAddress = input(
