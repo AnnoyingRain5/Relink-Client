@@ -54,7 +54,10 @@ notifications = NotificationList()
 def renderText():
     lines = os.get_terminal_size().lines
     columns = os.get_terminal_size().columns
-    topstr = f"({len(notifications)}) - #{CurrentChannel}@{serverAddress}"
+    if CurrentChannel.startswith("@"):
+        topstr = f"({len(notifications)}) - {CurrentChannel}@{serverAddress}"
+    else:
+        topstr = f"({len(notifications)}) - #{CurrentChannel}@{serverAddress}"
     middle = math.floor(columns / 2)
     print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
     for _ in range(middle - math.floor(len(topstr) / 2)):
