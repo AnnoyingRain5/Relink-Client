@@ -219,11 +219,14 @@ async def main():
     # connect and log in or sign up to the server
     global serverAddress
     serverAddress = input(
-        "Please enter the IP address or domain name (excluding port) of the server you wish to connect to: ")
+        "Please enter the IP address or domain name of the server you wish to connect to: ")
     print("Please wait while we attempt to connect to the server...")
+    if ":" in serverAddress:
+        fullAddress = f"ws://{serverAddress}"
+    else:
+        fullAddress = f"ws://{serverAddress}:8765"
     try:
-        async with websockets.connect(  # type: ignore
-                f"ws://{serverAddress}:8765") as websocket:
+        async with websockets.connect(fullAddress) as websocket:  # type: ignore
             global username
             action = input(
                 "Log in or sign up? Type l for login and s for sign up: ").lower()
