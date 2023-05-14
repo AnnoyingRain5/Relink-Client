@@ -1,7 +1,8 @@
 import asyncio
 import os
 import math
-import websockets
+import websockets.client
+import websockets.exceptions
 import aioconsole
 import communication
 
@@ -226,7 +227,7 @@ async def main():
     else:
         fullAddress = f"ws://{serverAddress}:8765"
     try:
-        async with websockets.connect(fullAddress) as websocket:  # type: ignore
+        async with websockets.client.connect(fullAddress) as websocket:
             global username
             action = input(
                 "Log in or sign up? Type l for login and s for sign up: ").lower()
@@ -273,7 +274,7 @@ async def main():
             # both of these loop forever, so technically we do not need to wait for both of them
             await PktRcvTask
             await InputManTask
-    except websockets.exceptions.ConnectionClosedOK:  # type: ignore
+    except websockets.exceptions.ConnectionClosedOK:
         print(f"{YELLOW}The connection has been closed by the server.{NORMAL}")
 
 asyncio.run(main())
