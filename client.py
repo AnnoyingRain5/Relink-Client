@@ -4,7 +4,7 @@ import math
 import websockets.client
 import websockets.exceptions
 import aioconsole
-import communication
+import Relink_Communication.communication as communication
 
 CURSOR_HOME = '\033[H'
 CURSOR_UP = '\033[F'
