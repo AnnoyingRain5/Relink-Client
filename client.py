@@ -216,6 +216,7 @@ async def main():
             f"if {BLUE}THIS{NORMAL} does not display in blue, then you will need to use a different terminal")
         print(
             "A popular supported terminal is Windows Terminal, which is avaliable on the Microsoft Store")
+        print()
 
     # connect and log in or sign up to the server
     global serverAddress
