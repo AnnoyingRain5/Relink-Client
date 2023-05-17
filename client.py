@@ -189,7 +189,7 @@ async def notificationHandler(websocket, notification: communication.Notificatio
 
 async def inputmanager(websocket):
     while True:
-        message = await aioconsole.ainput()
+        message: str = await aioconsole.ainput()
         if not message.startswith("/"):  # message is a message
             print(CURSOR_UP + ERASE_LINE)
             encoded = communication.Message()
@@ -198,14 +198,25 @@ async def inputmanager(websocket):
             encoded.isDM = CurrentChannel.startswith("@")
             await websocket.send(encoded.json)
         else:  # message is a command
-            print(CURSOR_UP + ERASE_LINE)
-            encoded = communication.Command()
-            arglist = message.split()
-            arglist[0] = arglist[0].removeprefix("/")
-            encoded.name = arglist[0]
-            # do not include the name argument
-            encoded.args = arglist[1:len(arglist)]
-            await websocket.send(encoded.json)
+            match message.removeprefix("/").lower():
+                case "inbox":
+                    output = ""
+                    for channel, amount in notifications.dict.items():
+                        if amount != 0:
+                            output += f"{channel}: {amount}\n"
+                    output = output.removesuffix("\n")
+                    messages.append(
+                        f"{YELLOW}Notifications:|n{output}{NORMAL}")
+                    renderText()
+                case _:
+                    print(CURSOR_UP + ERASE_LINE)
+                    encoded = communication.Command()
+                    arglist = message.split()
+                    arglist[0] = arglist[0].removeprefix("/")
+                    encoded.name = arglist[0]
+                    # do not include the name argument
+                    encoded.args = arglist[1:len(arglist)]
+                    await websocket.send(encoded.json)
 
 
 async def main():
