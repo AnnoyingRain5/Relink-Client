@@ -2,20 +2,20 @@ name: MacOS Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ test/MacOS/Stable ]
   pull_request:
-    branches: [ master ]
+    branches: [ test/MacOS/Stable ]
 
 jobs:
   pyinstaller-build:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - name: Checkout repository and submodules
         uses: actions/checkout@v2
         with:
           submodules: recursive
       - name: Create Executable
-        uses: sayyid5416/pyinstaller@v1
+        uses: sayyid5416/pyinstaller@teat
         with:
           python_ver: '3.11'
           spec: 'client.py'
