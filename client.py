@@ -206,7 +206,7 @@ async def inputmanager(websocket):
                             output += f"{channel}: {amount}\n"
                     output = output.removesuffix("\n")
                     messages.append(
-                        f"{YELLOW}Notifications:|n{output}{NORMAL}")
+                        f"{YELLOW}Notifications:\n{output}{NORMAL}")
                     renderText()
                 case _:
                     print(CURSOR_UP + ERASE_LINE)
