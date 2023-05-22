@@ -1,5 +1,6 @@
 import asyncio
 import os
+import dns.resolver
 import math
 import websockets.client
 import websockets.exceptions
@@ -237,7 +238,19 @@ async def main():
     if ":" in serverAddress:
         fullAddress = f"ws://{serverAddress}"
     else:
-        fullAddress = f"ws://{serverAddress}:8765"
+        fullAddress: str
+        try:
+            answer = dns.resolver.resolve(
+                f"_relink._websocket.{serverAddress}", "SRV")
+            rrset = answer.rrset
+            if rrset is None:
+                raise Exception
+            record = rrset.pop()
+            port = record.port
+            serverAddress = str(record.target).rstrip(".")
+            fullAddress = f"ws://{serverAddress}:{port}"
+        except Exception as e:
+            fullAddress = f"ws://{serverAddress}:8765"
     try:
         async with websockets.client.connect(fullAddress) as websocket:
             global username
