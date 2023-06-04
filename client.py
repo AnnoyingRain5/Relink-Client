@@ -7,6 +7,37 @@ import websockets.exceptions
 import aioconsole
 import Relink_Communication.communication as communication
 
+
+class NotificationList():
+    '''Basic class to handle the notification list'''
+
+    def __init__(self):
+        self.dict: dict[str, int] = {}
+
+    def __len__(self) -> int:
+        '''Returns the total amount of notifications across all channels'''
+        total = 0
+        for _, amount in self.dict.items():
+            total += amount
+        return total
+
+    def add(self, channel: str):
+        if channel == CurrentChannel:
+            return
+        # add 1 to the amount of notifications
+        try:
+            self.dict[channel] += 1
+        except KeyError:  # if this is the first notification for this channel
+            self.dict[channel] = 1
+
+    def markRead(self, channel: str):
+        self.dict[channel] = 0
+
+    def MarkAllRead(self):
+        self.dict = {}
+
+
+# init constants
 CURSOR_HOME = '\033[H'
 CURSOR_UP = '\033[F'
 ERASE_LINE = '\033[K'
@@ -18,77 +49,67 @@ RED = '\033[31m'
 BLUE = '\033[94m'
 NORMAL = '\033[0m'
 
+# init variables
 username = ""
 messages = []
 DMs: dict[str, list[communication.Message]] = {}
 CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
-
-
-class NotificationList():
-    def __init__(self):
-        self.dict: dict[str, int] = {}
-
-    def __len__(self) -> int:
-        total = 0
-        for _, amount in self.dict.items():
-            total += amount
-        return total
-
-    def add(self, channel):
-        if channel == CurrentChannel:
-            return
-        try:
-            self.dict[channel] += 1
-        except KeyError:  # if this is the first message for this
-            self.dict[channel] = 1
-
-    def markRead(self, channel):
-        self.dict[channel] = 0
-
-    def MarkAllRead(self):
-        self.dict = {}
-
-
 notifications = NotificationList()
 
 
 def renderText():
+    '''Function to handle rendering text to the terminal'''
+    # work out the size of the terminal
     lines = os.get_terminal_size().lines
     columns = os.get_terminal_size().columns
+    middle = math.floor(columns / 2)
+    # if this is a DM channel, don't show the # in front of the channel name
     if CurrentChannel.startswith("@"):
         topstr = f"({len(notifications)}) - {CurrentChannel}"
     else:
         topstr = f"({len(notifications)}) - #{CurrentChannel}"
-    middle = math.floor(columns / 2)
+    # clear the screen and set the background to blue
     print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
+    # print the channel name and amount of notifications text centered to the screen
     for _ in range(middle - math.floor(len(topstr) / 2)):
         print(" ", end="")
     print(topstr, end="")
     for _ in range(middle - math.ceil(len(topstr) / 2)):
         print(" ", end="")
+    # now we can reset the colour
     print(NORMAL)
+    # for every message in the messages list
     for message in messages:
         if "\n" in message:
+            # if the message contains a newline, use that as the authoritive
+            # answer for how many lines the message will take up
             lines -= (message.count("\n"))
             continue
+        # ignore formatting when calculating amount of lines
         plain = message.replace(YELLOW, "").replace(
             RED, "").replace(BLUE, "").replace(NORMAL, "")
+        # calculate the amount of lines the message will take
         lines -= math.ceil(len(plain) / columns) - 1
     while len(messages) > lines - 2:
-        message = messages.pop(0)
+        # if there are too many message to display
+        message = messages.pop(0)  # remove the oldest message
+        # add the lines back to the amount of lines available for printing
         lines += (message.count("\n"))
         plain = message.replace(YELLOW, "").replace(
             RED, "").replace(BLUE, "").replace(NORMAL, "")
         lines += math.ceil(len(plain) / columns) - 1
+    # for each line, print it's message
     for line in range(lines - 2):
         try:
             print(messages[line])
         except:
+            # if there is no message to print, print an empty line instead
             print("")
 
 
 async def PacketReciever(websocket):
+    '''Main function to handle receiving packets'''
     while True:
         # Get a packet from the server and convert the JSON to it's type
         rawPacket = await websocket.recv()
@@ -105,7 +126,9 @@ async def PacketReciever(websocket):
                 await ChannelChangeHandler(websocket, packet)  # type: ignore
             case communication.Notification:
                 await notificationHandler(websocket, packet)  # type: ignore
-            case _:  # if the client does not understand what type of packet it is
+            case _:
+                # if the client does not understand what type of packet it is,
+                # warn the user and hint at a possible client update
                 warning = f"{YELLOW} Warning: Recieved an unknown message from the server! "
                 warning += "Perhaps you need to update your client? The raw JSON recieved is as follows: "
                 warning += f"{NORMAL}{rawPacket}"
@@ -114,7 +137,8 @@ async def PacketReciever(websocket):
 
 
 async def messageHandler(websocket, message: communication.Message):
-    if not message.isDM:
+    '''Handles incoming messages'''
+    if not message.isDM:  # if the message is not a DM
         if message.username == username:
             messages.append(
                 f"{BLUE}{message.username}{NORMAL}: {message.text}")
@@ -133,8 +157,8 @@ async def messageHandler(websocket, message: communication.Message):
                 messages.append(
                     f"{RED}{message.username}{NORMAL}: {message.text}")
             renderText()
-        else:
-            # send notification
+        else:  # The message is a DM, but we are not in the DM channel
+            # send ourselves a notification
             notification = communication.Notification()
             notification.type = "DM"
             notification.location = f"@{message.username}"
@@ -147,22 +171,30 @@ async def messageHandler(websocket, message: communication.Message):
 
 
 async def SystemMessageHandler(websocket, message: communication.System):
+    '''Handles system messages'''
     messages.append(f"{YELLOW}{message.text}{NORMAL}")
     renderText()
 
 
 async def commandHandler(websocket, command: communication.Command):
+    '''Handles the client receiving a command from the server
+
+    Currently stubbed'''
     pass
 
 
 async def ChannelChangeHandler(websocket, message: communication.ChannelChange):
+    '''Handles channel change packets'''
     global CurrentChannel
     global messages
-    CurrentChannel = message.channel
-    messages = []
+    CurrentChannel = message.channel  # switch the channel variable to the new channel
+    messages = []  # wipe the message list
+    # mark notifications for the new channel as read
     notifications.markRead(message.channel)
+    # if we are switching to a DM channel
     if CurrentChannel.startswith("@"):
         try:
+            # display the DM messages that we have recorded
             for dm in DMs[CurrentChannel]:
                 if dm.username == username:
                     messages.append(
@@ -176,23 +208,29 @@ async def ChannelChangeHandler(websocket, message: communication.ChannelChange):
 
 
 async def notificationHandler(websocket, notification: communication.Notification):
-    # TODO add proper notification support
+    '''Handles notification packets'''
+    # TODO send a system notification if possible
     if notification.type == "mention":
         text = f"{YELLOW}You got a new mention in #{notification.location}!{NORMAL}\a"
     elif notification.type == "DM":
         text = f"{YELLOW}New DM from {notification.location}{NORMAL}\a"
     else:
         text = "New unknown notification.\a"
+    # add the notification to the list
     notifications.add(notification.location)
     messages.append(text)
-    renderText()
+    renderText()  # re-render the screen to include the updated notification count
 
 
 async def inputmanager(websocket):
+    '''Handles input from the user when the enter key is pressed'''
     while True:
         message: str = await aioconsole.ainput()
-        if not message.startswith("/"):  # message is a message
+        if not message.startswith("/"):
+            # message is a message (not a command)
+            # remove the line where the input is
             print(CURSOR_UP + ERASE_LINE)
+            # prepare and send the packet to the server
             encoded = communication.Message()
             encoded.text = message
             encoded.username = username
@@ -200,6 +238,7 @@ async def inputmanager(websocket):
             await websocket.send(encoded.json)
         else:  # message is a command
             match message.removeprefix("/").lower():
+                # match to client commands
                 case "inbox":
                     output = ""
                     for channel, amount in notifications.dict.items():
@@ -210,6 +249,7 @@ async def inputmanager(websocket):
                         f"{YELLOW}Notifications:\n{output}{NORMAL}")
                     renderText()
                 case _:
+                    # the command must be a server command
                     print(CURSOR_UP + ERASE_LINE)
                     encoded = communication.Command()
                     arglist = message.split()
@@ -221,11 +261,11 @@ async def inputmanager(websocket):
 
 
 async def main():
-    # if we are running on windows
+    # warn about running on windows
     if os.name == "nt":
         print("Hey! it looks like you are running on Windows.")
         print(
-            f"if {BLUE}THIS{NORMAL} does not display in blue, then you will need to use a different terminal")
+            f"if {BLUE}THIS TEXT{NORMAL} does not display in blue, then you will need to use a different terminal")
         print(
             "A popular supported terminal is Windows Terminal, which is avaliable on the Microsoft Store")
         print()
@@ -235,11 +275,11 @@ async def main():
     serverAddress = input(
         "Please enter the IP address or domain name of the server you wish to connect to: ")
     print("Please wait while we attempt to connect to the server...")
-    if ":" in serverAddress:
+    if ":" in serverAddress:  # if a port is supplied
         fullAddress = f"ws://{serverAddress}"
-    else:
+    else:  # a port was not supplied
         fullAddress: str
-        try:
+        try:  # try to get the port through a DNS query
             answer = dns.resolver.resolve(
                 f"_relink._websocket.{serverAddress}", "SRV")
             rrset = answer.rrset
@@ -250,14 +290,18 @@ async def main():
             serverAddress = str(record.target).rstrip(".")
             fullAddress = f"ws://{serverAddress}:{port}"
         except Exception as e:
+            # the query failed, assume default port
             fullAddress = f"ws://{serverAddress}:8765"
     try:
+        # connect to the server
         async with websockets.client.connect(fullAddress) as websocket:
             global username
+            # prompt the user
             action = input(
                 "Log in or sign up? Type l for login and s for sign up: ").lower()
             if action == "s":  # sign up
                 while True:
+                    # get username and password and send them to the server
                     username = await aioconsole.ainput("What username will you go by? ")
                     password = await aioconsole.ainput(
                         "Make an unforgettable password: ")
@@ -265,23 +309,27 @@ async def main():
                     packet.username = username
                     packet.password = password
                     print("Please wait...")
+                    # send the request to the server
                     await websocket.send(packet.json)
                     response = communication.Result()
                     response.json = await websocket.recv()
                     if response.result:
-                        print("Login successful!")
+                        print("Sign up successful!")
                         break
                     else:
+                        # the server denied the request, let the user know and give them a second chance
                         print("Denied! Please try again...")
                         print(f"The server said: {response.reason}")
             elif action == "l":  # log in
                 while True:
+                    # get username and password from user
                     username = await aioconsole.ainput("What is your username? ")
                     password = await aioconsole.ainput("What is your password? ")
                     packet = communication.LoginRequest()
                     packet.username = username
                     packet.password = password
                     print("Please wait...")
+                    # send the request to the server
                     await websocket.send(packet.json)
                     response = communication.Result()
                     response.json = await websocket.recv()
@@ -289,6 +337,7 @@ async def main():
                         print("Login successful!")
                         break
                     else:
+                        # the server denied the request, let the user know and give them a second chance
                         print("Denied! Please try again...")
                         print(f"The server said: {response.reason}")
 
