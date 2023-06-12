@@ -274,26 +274,38 @@ async def main():
     global serverAddress
     serverAddress = input(
         "Please enter the IP address or domain name of the server you wish to connect to: ")
+    print("Does this server support encryption?")
+    print("For the official homeserver, the answer is yes, otherwise, check with your homeserver administrator.")
+    print("If you are unsure, choose no.")
+    if input("Please answer with Y or N: ").lower() == "y":
+        protocol = "wss"
+    else:
+        protocol = "ws"
     print("Please wait while we attempt to connect to the server...")
     if ":" in serverAddress:  # if a port is supplied
-        fullAddress = f"ws://{serverAddress}"
+        fullAddress = f"{protocol}://{serverAddress}"
     else:  # a port was not supplied
         fullAddress: str
         try:  # try to get the port through a DNS query
             answer = dns.resolver.resolve(
-                f"_relink._websocket.{serverAddress}", "SRV")
+                f"_relink._tcp.{serverAddress}", "SRV")
             rrset = answer.rrset
             if rrset is None:
                 raise Exception
             record = rrset.pop()
             port = record.port
             serverAddress = str(record.target).rstrip(".")
-            fullAddress = f"ws://{serverAddress}:{port}"
+            fullAddress = f"{protocol}://{serverAddress}:{port}"
         except Exception as e:
             # the query failed, assume default port
-            fullAddress = f"ws://{serverAddress}:8765"
+            if protocol == "wss":
+                port = 443
+            else:
+                port = 8765
+            fullAddress = f"{protocol}://{serverAddress}:{port}"
     try:
         # connect to the server
+        print(fullAddress)
         async with websockets.client.connect(fullAddress) as websocket:
             global username
             # prompt the user
