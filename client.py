@@ -71,7 +71,7 @@ def renderText():
         topstr = f"({len(notifications)}) - #{CurrentChannel}"
     # clear the screen and set the background to blue
     print(f"{ERASE_SCREEN}{CURSOR_HOME}{BLUE_BACKGROUND}", end="")
-    # print the channel name and amount of notifications text centered to the screen
+    # print the channel name and amount of notifications text centred to the screen
     for _ in range(middle - math.floor(len(topstr) / 2)):
         print(" ", end="")
     print(topstr, end="")
@@ -82,7 +82,7 @@ def renderText():
     # for every message in the messages list
     for message in messages:
         if "\n" in message:
-            # if the message contains a newline, use that as the authoritive
+            # if the message contains a newline, use that as the authoritative
             # answer for how many lines the message will take up
             lines -= (message.count("\n"))
             continue
@@ -108,7 +108,7 @@ def renderText():
             print("")
 
 
-async def PacketReciever(websocket):
+async def PacketReceiver(websocket):
     '''Main function to handle receiving packets'''
     while True:
         # Get a packet from the server and convert the JSON to it's type
@@ -129,8 +129,8 @@ async def PacketReciever(websocket):
             case _:
                 # if the client does not understand what type of packet it is,
                 # warn the user and hint at a possible client update
-                warning = f"{YELLOW} Warning: Recieved an unknown message from the server! "
-                warning += "Perhaps you need to update your client? The raw JSON recieved is as follows: "
+                warning = f"{YELLOW} Warning: Received an unknown message from the server! "
+                warning += "Perhaps you need to update your client? The raw JSON received is as follows: "
                 warning += f"{NORMAL}{rawPacket}"
                 messages.append(warning)
                 renderText()
@@ -267,7 +267,7 @@ async def main():
         print(
             f"if {BLUE}THIS TEXT{NORMAL} does not display in blue, then you will need to use a different terminal")
         print(
-            "A popular supported terminal is Windows Terminal, which is avaliable on the Microsoft Store")
+            "A popular supported terminal is Windows Terminal, which is available on the Microsoft Store")
         print()
 
     # connect and log in or sign up to the server
@@ -354,7 +354,7 @@ async def main():
                         print(f"The server said: {response.reason}")
 
             # we are now fully logged into the server, start the main script
-            PktRcvTask = asyncio.create_task(PacketReciever(websocket))
+            PktRcvTask = asyncio.create_task(PacketReceiver(websocket))
             InputManTask = asyncio.create_task(inputmanager(websocket))
             renderText()  # render the screen for the first time
             # both of these loop forever, so technically we do not need to wait for both of them
