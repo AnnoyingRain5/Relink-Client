@@ -297,6 +297,9 @@ async def inputmanager(websocket):
                     message = message.removesuffix(", ")
                     messages.append(f"{message}{NORMAL}")
                     renderText()
+                case "exit":
+                    print(f"{YELLOW}Now exiting Relink, Thanks for hanging out!{NORMAL}")
+                    await websocket.close()
                 case _:
                     # the command must be a server command
                     print(CURSOR_UP + ERASE_LINE)
@@ -436,6 +439,6 @@ async def main():
             await PktRcvTask
             await InputManTask
     except websockets.exceptions.ConnectionClosedOK:
-        print(f"{YELLOW}The connection has been closed by the server.{NORMAL}")
+        print(f"{YELLOW}The connection has been closed.{NORMAL}")
 
 asyncio.run(main())
