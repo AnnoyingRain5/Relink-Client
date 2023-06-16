@@ -57,6 +57,9 @@ CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
 notifications = NotificationList()
 
+ChannelUserList = []
+ServerUserList = []
+CommandList = []
 
 def renderText():
     '''Function to handle rendering text to the terminal'''
@@ -126,6 +129,10 @@ async def PacketReceiver(websocket):
                 await ChannelChangeHandler(websocket, packet)  # type: ignore
             case communication.Notification:
                 await notificationHandler(websocket, packet)  # type: ignore
+            case communication.CommandList:
+                await CommandListHandler(websocket, packet) # type: ignore
+            case communication.UserList:
+                await UserListHandler(websocket, packet) # type: ignore
             case _:
                 # if the client does not understand what type of packet it is,
                 # warn the user and hint at a possible client update
@@ -174,6 +181,18 @@ async def SystemMessageHandler(websocket, message: communication.System):
     '''Handles system messages'''
     messages.append(f"{YELLOW}{message.text}{NORMAL}")
     renderText()
+
+async def CommandListHandler(websocket, message: communication.CommandList):
+    '''Handles the list of commands being updated'''
+    global CommandList
+    CommandList = message.commandList
+
+async def UserListHandler(websocket, message: communication.UserList):
+    '''Handles the list of commands being updated'''
+    global ServerUserList
+    global ChannelUserList
+    ServerUserList = message.serverList
+    ChannelUserList = message.channelList
 
 
 async def commandHandler(websocket, command: communication.Command):
@@ -247,6 +266,32 @@ async def inputmanager(websocket):
                     output = output.removesuffix("\n")
                     messages.append(
                         f"{YELLOW}Notifications:\n{output}{NORMAL}")
+                    renderText()
+                case "list":
+                        message = f"{YELLOW}Users in your channel are: "
+                        for user in ChannelUserList:
+                            message += f"{user}, "
+                        # remove the last comma
+                        message = message.removesuffix(", ")
+                        message += "\nAll users online on this server are: "
+                        for user in ServerUserList:
+                            message += f"{user}, "
+                        # remove the last comma
+                        message = message.removesuffix(", ")
+                        messages.append(f"{message}{NORMAL}")
+                        renderText()
+                case "help":
+                    message = f"{YELLOW}Defined commands are as follows:\n"
+                    message += "Client commands:\n"
+                    for command in ["inbox", "list", "help"]:
+                        message += f"{command}, "
+                    # remove the last comma
+                    message = message.removesuffix(", ")
+                    message += "\nServer commands are as follows:\n"
+                    for command in CommandList:
+                        message += f"{command}, "
+                    message = message.removesuffix(", ")
+                    messages.append(f"{message}{NORMAL}")
                     renderText()
                 case _:
                     # the command must be a server command
