@@ -56,7 +56,7 @@ DMs: dict[str, list[communication.Message]] = {}
 CurrentChannel = "Unknown (not supplied by server?)"
 serverAddress = ""
 notifications = NotificationList()
-
+WelcomeNotSent = False
 ChannelUserList = []
 ServerUserList = []
 CommandList = []
@@ -209,6 +209,10 @@ async def ChannelChangeHandler(websocket, message: communication.ChannelChange):
     CurrentChannel = message.channel  # switch the channel variable to the new channel
     messages = []  # wipe the message list
     # mark notifications for the new channel as read
+    global WelcomeNotSent
+    if WelcomeNotSent:
+        messages.append(f"{YELLOW}You have been logged in successfully. Welcome to Relink! Use /help for a list of commands.")
+        WelcomeNotSent = False
     notifications.markRead(message.channel)
     # if we are switching to a DM channel
     if CurrentChannel.startswith("@"):
@@ -425,6 +429,8 @@ async def main():
             # we are now fully logged into the server, start the main script
             PktRcvTask = asyncio.create_task(PacketReceiver(websocket))
             InputManTask = asyncio.create_task(inputmanager(websocket))
+            global WelcomeNotSent
+            WelcomeNotSent = True
             renderText()  # render the screen for the first time
             # both of these loop forever, so technically we do not need to wait for both of them
             await PktRcvTask
