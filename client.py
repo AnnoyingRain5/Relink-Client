@@ -410,10 +410,10 @@ async def main():
             while True:
                 # prompt the user
                 action = await aioconsole.ainput(
-                    "Log in or sign up? Type l for login and s for sign up: ")
-                if action.lower() == "s":  # sign up
+                    "Log in or sign up? Type 1 for login or 2 for sign up: ")
+                if action.lower() == "2" or action.lower() == "s":  # sign up
                     result = await signup(websocket)
-                elif action.lower() == "l":  # log in
+                elif action.lower() == "1" or action.lower() == "l":  # log in
                     result = await login(websocket)
                 else:
                     continue
