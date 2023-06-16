@@ -284,12 +284,12 @@ async def inputmanager(websocket):
                     message = f"{YELLOW}Defined commands are as follows:\n"
                     message += "Client commands:\n"
                     for command in ["inbox", "list", "help"]:
-                        message += f"{command}, "
+                        message += f"/{command}, "
                     # remove the last comma
                     message = message.removesuffix(", ")
                     message += "\nServer commands are as follows:\n"
                     for command in CommandList:
-                        message += f"{command}, "
+                        message += f"/{command}, "
                     message = message.removesuffix(", ")
                     messages.append(f"{message}{NORMAL}")
                     renderText()
