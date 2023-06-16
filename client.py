@@ -305,6 +305,7 @@ async def inputmanager(websocket):
                     await websocket.send(encoded.json)
 
 async def signup(websocket):
+    global username
     while True:
         # get username and password and send them to the server
         print("type cancel to cancel")
@@ -332,6 +333,7 @@ async def signup(websocket):
             print(f"The server said: {response.reason}")
 
 async def login(websocket):
+    global username
     while True:
         # get username and password from user
         print("type cancel to cancel")
@@ -351,7 +353,7 @@ async def login(websocket):
         response.json = await websocket.recv()
         if response.result:
             print("Login successful!")
-            break
+            return True
         else:
             # the server denied the request, let the user know and give them a second chance
             print("Denied! Please try again...")
@@ -406,7 +408,6 @@ async def main():
         print(fullAddress)
         async with websockets.client.connect(fullAddress) as websocket:
             while True:
-                global username
                 # prompt the user
                 action = await aioconsole.ainput(
                     "Log in or sign up? Type l for login and s for sign up: ")
