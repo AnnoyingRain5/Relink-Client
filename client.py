@@ -287,7 +287,7 @@ async def inputmanager(websocket):
                 case "help":
                     message = f"{YELLOW}Defined commands are as follows:\n"
                     message += "Client commands:\n"
-                    for command in ["inbox", "list", "help"]:
+                    for command in ["inbox", "list", "help", "exit"]:
                         message += f"/{command}, "
                     # remove the last comma
                     message = message.removesuffix(", ")
