@@ -304,6 +304,58 @@ async def inputmanager(websocket):
                     encoded.args = arglist[1:len(arglist)]
                     await websocket.send(encoded.json)
 
+async def signup(websocket):
+    while True:
+        # get username and password and send them to the server
+        print("type cancel to cancel")
+        username = await aioconsole.ainput("What username will you go by? ")
+        if username == "cancel":
+            return False
+        password = await aioconsole.ainput(
+            "Make an unforgettable password: ")
+        if password == "cancel":
+            return False
+        packet = communication.SignupRequest()
+        packet.username = username
+        packet.password = password
+        print("Please wait...")
+        # send the request to the server
+        await websocket.send(packet.json)
+        response = communication.Result()
+        response.json = await websocket.recv()
+        if response.result:
+            print("Sign up successful!")
+            return True
+        else:
+            # the server denied the request, let the user know and give them a second chance
+            print("Denied! Please try again...")
+            print(f"The server said: {response.reason}")
+
+async def login(websocket):
+    while True:
+        # get username and password from user
+        print("type cancel to cancel")
+        username = await aioconsole.ainput("What is your username? ")
+        if username == "cancel":
+            return False
+        password = await aioconsole.ainput("What is your password? ")
+        if password == "cancel":
+            return False
+        packet = communication.LoginRequest()
+        packet.username = username
+        packet.password = password
+        print("Please wait...")
+        # send the request to the server
+        await websocket.send(packet.json)
+        response = communication.Result()
+        response.json = await websocket.recv()
+        if response.result:
+            print("Login successful!")
+            break
+        else:
+            # the server denied the request, let the user know and give them a second chance
+            print("Denied! Please try again...")
+            print(f"The server said: {response.reason}")
 
 async def main():
     # warn about running on windows
@@ -322,7 +374,8 @@ async def main():
     print("Does this server support encryption?")
     print("For the official homeserver, the answer is yes, otherwise, check with your homeserver administrator.")
     print("If you are unsure, choose no.")
-    if input("Please answer with Y or N: ").lower() == "y":
+    answer = await aioconsole.ainput("Please answer with Y or N: ")
+    if answer.lower() == "y":
         protocol = "wss"
     else:
         protocol = "ws"
@@ -352,51 +405,21 @@ async def main():
         # connect to the server
         print(fullAddress)
         async with websockets.client.connect(fullAddress) as websocket:
-            global username
-            # prompt the user
-            action = input(
-                "Log in or sign up? Type l for login and s for sign up: ").lower()
-            if action == "s":  # sign up
-                while True:
-                    # get username and password and send them to the server
-                    username = await aioconsole.ainput("What username will you go by? ")
-                    password = await aioconsole.ainput(
-                        "Make an unforgettable password: ")
-                    packet = communication.SignupRequest()
-                    packet.username = username
-                    packet.password = password
-                    print("Please wait...")
-                    # send the request to the server
-                    await websocket.send(packet.json)
-                    response = communication.Result()
-                    response.json = await websocket.recv()
-                    if response.result:
-                        print("Sign up successful!")
-                        break
-                    else:
-                        # the server denied the request, let the user know and give them a second chance
-                        print("Denied! Please try again...")
-                        print(f"The server said: {response.reason}")
-            elif action == "l":  # log in
-                while True:
-                    # get username and password from user
-                    username = await aioconsole.ainput("What is your username? ")
-                    password = await aioconsole.ainput("What is your password? ")
-                    packet = communication.LoginRequest()
-                    packet.username = username
-                    packet.password = password
-                    print("Please wait...")
-                    # send the request to the server
-                    await websocket.send(packet.json)
-                    response = communication.Result()
-                    response.json = await websocket.recv()
-                    if response.result:
-                        print("Login successful!")
-                        break
-                    else:
-                        # the server denied the request, let the user know and give them a second chance
-                        print("Denied! Please try again...")
-                        print(f"The server said: {response.reason}")
+            while True:
+                global username
+                # prompt the user
+                action = await aioconsole.ainput(
+                    "Log in or sign up? Type l for login and s for sign up: ")
+                if action.lower() == "s":  # sign up
+                    result = await signup(websocket)
+                elif action.lower() == "l":  # log in
+                    result = await login(websocket)
+                else:
+                    continue
+                if result == True:
+                    break
+                else:
+                    continue
 
             # we are now fully logged into the server, start the main script
             PktRcvTask = asyncio.create_task(PacketReceiver(websocket))
